@@ -10,6 +10,9 @@
 #applying NLP to analyse individuals' feelings and emotions
 #-finetuning model parameters with newly incoming data
 
+#dataset1: https://www.kaggle.com/datasets/uom190346a/sleep-health-and-lifestyle-dataset
+#dataset2: https://www.kaggle.com/datasets/equilibriumm/sleep-efficiency
+#dataset3: https://www.kaggle.com/datasets/rabieelkharoua/alzheimers-disease-dataset
 
 #STEP 1 AND 2
 
