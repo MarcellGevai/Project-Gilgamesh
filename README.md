@@ -1,0 +1,95 @@
+# Project Gilgamesh
+
+Advancing personalized medicine through the early diagnosis of neurodegenerative and mental health conditions using machine learning.
+
+---
+
+## Table of Contents
+- [Introduction](#introduction)
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Technologies](#technologies)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
+
+---
+
+## Introduction
+Project Gilgamesh is inspired by the ancient Mesopotamian story of rejuvenation and the plant of life. Our project focuses on utilizing machine learning techniques to identify early patterns in neurodegenerative diseases such as Alzheimer’s and mental health conditions like depression and sleep disorders. The goal is to facilitate real-time predictions, enable early diagnoses, and provide actionable insights to improve patient outcomes while reducing healthcare costs.
+
+---
+
+## Features
+- Real-time disease risk prediction for multiple conditions.
+- Analysis of shared patterns across diseases using machine learning.
+- Actionable insights for early diagnosis and clinical trial recruitment.
+- Scalable approach applicable to other disease groups in the future.
+
+---
+
+## Installation
+To set up the project locally, follow these steps:
+
+1. Clone the repository:
+   bash
+   git clone https://github.com/MarcellGevai/Project-Gilgamesh.git
+   
+2. Navigate to the project directory:
+   bash
+   cd Project-Gilgamesh/Code
+   
+3. Install the required dependencies:
+   bash
+   pip install -r requirements.txt
+   
+
+---
+
+## Usage
+To use Project Gilgamesh for predictions:
+
+1. Prepare your dataset and place it in the appropriate folder.
+2. Run the main script to analyze data and generate predictions:
+   bash
+   python main.py
+   
+3. Review the output for risk scores and visualizations.
+
+---
+
+## Technologies
+- *Python*: Core language for the implementation.
+- *Machine Learning*: Algorithms like KNN clustering and multitask models for predictions.
+- *Pandas & NumPy*: Data analysis and preprocessing.
+- *Matplotlib/Seaborn*: Visualizations for results and insights.
+
+---
+
+## Contributing
+We welcome contributions to Project Gilgamesh. Here’s how you can help:
+
+1. Fork the repository and create a new branch.
+2. Make your changes and test thoroughly.
+3. Submit a pull request with a clear explanation of your contribution.
+
+For major changes, please open an issue first to discuss your ideas.
+
+---
+
+## License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## Contact
+If you have questions, suggestions, or feedback, feel free to reach out:
+
+- *Team Kerita*
+- Email: [your-email@example.com](mailto:your-email@example.com)
+- GitHub: [Project Gilgamesh](https://github.com/MarcellGevai/Project-Gilgamesh)
+
+---
+
+We hope Project Gilgamesh contributes to advancements in personalized medicine and early-stage disease diagnostics. Let’s build a healthier future together!
