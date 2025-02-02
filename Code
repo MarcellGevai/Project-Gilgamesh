@@ -1,0 +1,301 @@
+#Hackaton code for Project Gilgamesh, team Kerita
+
+#Steps:
+#1 Feature engineering
+#2 Merging datasets using KNN on common features
+#3 Synthetising large amount of data using CTGAN
+#4 Building a multitask learning neural network model to make predictions
+#Future steps:
+#-collecting more and accurate data to expand the feature set and the disorders to predict
+#applying NLP to analyse individuals' feelings and emotions
+#-finetuning model parameters with newly incoming data
+
+
+#STEP 1 AND 2
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import NearestNeighbors
+import pandas as pd
+
+# Load datasets
+df1 = pd.read_csv("dataset1.csv")  # Sleep disorder dataset
+df2 = pd.read_csv("dataset2.csv")  # Sleep efficiency dataset
+
+# Rename df2 columns to match df1
+df2 = df2.rename(columns={"Sleep duration": "Sleep Duration", "Exercise frequency": "Physical Activity Level"})
+
+# Define common features
+common_features = ["Age", "Gender", "Sleep Duration", "Physical Activity Level"]
+
+# Convert categorical variables (Gender) into numeric
+df1["Gender"] = df1["Gender"].map({"Male": 0, "Female": 1})
+df2["Gender"] = df2["Gender"].map({"Male": 0, "Female": 1})
+
+# Convert all numerical columns to proper numeric types
+for col in common_features:
+    df1[col] = pd.to_numeric(df1[col], errors="coerce")  # Convert to numeric, setting errors to NaN
+    df2[col] = pd.to_numeric(df2[col], errors="coerce")
+
+# Normalize the common features
+scaler = StandardScaler()
+df1_scaled = scaler.fit_transform(df1[common_features])
+df2_scaled = scaler.transform(df2[common_features])  # Now both datasets use the same feature names
+
+# Find nearest neighbors
+knn = NearestNeighbors(n_neighbors=1, metric='euclidean')
+knn.fit(df2_scaled)
+distances, indices = knn.kneighbors(df1_scaled)
+
+# Merge datasets
+df1["Matched_ID"] = indices.flatten()
+df_combined = df1.merge(df2, left_on="Matched_ID", right_index=True, suffixes=("_disorder", "_efficiency"))
+
+# Load datasets
+df1 = df_combined  # combined dataset from the previous steps
+df2 = pd.read_csv("dataset3.csv")  # Alzheimer and Depression dataset
+
+# Define common features for matching
+common_features = ["Age", "Gender", "BMI", "Smoking", "Alcohol consumption", "Physical Activity Level", "Quality of Sleep"]
+
+# Map BMI categories to numeric values
+bmi_mapping = {
+    "Underweight": 18.5,
+    "Normal": 22.5,
+    "Overweight": 27.5,
+    "Obese": 35.0
+}
+
+# Apply mapping to both datasets
+df1['BMI'] = df1['BMI'].map(bmi_mapping)
+df2['BMI'] = df2['BMI'].map(bmi_mapping)
+
+# Convert numerical columns to proper numeric types (if needed)
+for col in common_features:
+    df1[col] = pd.to_numeric(df1[col], errors="coerce")
+    df2[col] = pd.to_numeric(df2[col], errors="coerce")
+
+# Normalize the common features
+scaler = StandardScaler()
+df1_scaled = scaler.fit_transform(df1[common_features])
+df2_scaled = scaler.transform(df2[common_features])  # Now both datasets use the same feature names
+
+# Find nearest neighbors
+knn = NearestNeighbors(n_neighbors=1, metric='euclidean')
+knn.fit(df2_scaled)
+distances, indices = knn.kneighbors(df1_scaled)
+
+# Merge datasets
+df1["Matched_ID"] = indices.flatten()
+df_combined = df1.merge(df2, left_on="Matched_ID", right_index=True, suffixes=("_df1", "_df2"))
+
+#STEP 3
+
+import pandas as pd
+from sdv.single_table import CTGANSynthesizer
+from sdv.metadata import SingleTableMetadata
+
+# Load your dataset
+data = df_combined
+
+# Step 2: Create metadata for the dataset
+metadata = SingleTableMetadata()
+metadata.detect_from_dataframe(data)
+
+# Step 3: Train the CTGAN model
+synthesizer = CTGANSynthesizer(metadata=metadata)
+synthesizer.fit(data)
+
+# Step 4: Generate synthetic data, 5000 rows
+synthetic_data = synthesizer.sample(num_rows=5000)
+
+# Fill missing values in the "Sleep Disorder" column with "None", where there is no sleep disorder present
+synthetic_data["Sleep Disorder"] = synthetic_data["Sleep Disorder"].fillna("None")
+
+
+#STEP 4
+
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.model_selection import train_test_split
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from sklearn.metrics import accuracy_score, mean_absolute_error
+
+# Set random seed for reproducibility
+seed = 42
+np.random.seed(seed)  # For numpy random functions
+torch.manual_seed(seed)  # For PyTorch
+torch.cuda.manual_seed(seed)  # For CUDA (if using GPU)
+torch.backends.cudnn.deterministic = True  # Ensure deterministic behavior with cuDNN
+torch.backends.cudnn.benchmark = False  # Disable benchmarking for deterministic results
+
+# Load dataset
+df = synthetic_data
+
+# Fix "Blood Pressure" column by splitting into two numerical values
+df[['SystolicBP', 'DiastolicBP']] = df['Blood Pressure'].str.split('/', expand=True).astype(float)
+df.drop(columns=['Blood Pressure'], inplace=True)  # Remove the original column
+
+# Define target variables
+regression_target = "Sleep efficiency"  # Continuous
+classification_targets = ["Sleep Disorder", "Depression", "Alzheimer"]  # Categorical
+
+# Encode categorical targets
+for target in classification_targets:
+    df[target] = LabelEncoder().fit_transform(df[target])
+
+# Identify other categorical features and encode them
+categorical_columns = ["Gender", "Ethnicity", "EducationLevel", "DietQuality", "FamilyHistoryAlzheimers"]
+for col in categorical_columns:
+    df[col] = LabelEncoder().fit_transform(df[col])
+
+# Separate features (X) and targets (y)
+X = df.drop(columns=[regression_target] + classification_targets)  # Features
+y_reg = df[regression_target].values  # Regression target
+y_class = df[classification_targets].values  # Classification targets
+
+# Normalize features
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Convert to PyTorch tensors
+X_tensor = torch.tensor(X_scaled, dtype=torch.float32)
+y_reg_tensor = torch.tensor(y_reg, dtype=torch.float32).view(-1, 1)  # Regression target
+y_class_tensor = torch.tensor(y_class, dtype=torch.long)  # Classification targets
+
+# Train-test split with fixed random seed
+X_train, X_test, y_reg_train, y_reg_test, y_class_train, y_class_test = train_test_split(
+    X_tensor, y_reg_tensor, y_class_tensor, test_size=0.2, random_state=seed
+)
+
+# Create Dataloaders for training
+train_dataset = torch.utils.data.TensorDataset(X_train, y_reg_train, y_class_train)
+test_dataset = torch.utils.data.TensorDataset(X_test, y_reg_test, y_class_test)
+
+train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=32, shuffle=True)
+test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=32, shuffle=False)
+
+class MultiTaskSleepModel(nn.Module):
+    def __init__(self, input_dim, num_classes):
+        super(MultiTaskSleepModel, self).__init__()
+
+        # Shared layers
+        self.shared = nn.Sequential(
+            nn.Linear(input_dim, 128),
+            nn.ReLU(),
+            nn.Linear(128, 64),
+            nn.ReLU()
+        )
+
+        # Task-specific heads
+        self.efficiency_head = nn.Linear(64, 1)  # Regression
+        self.disorder_head = nn.Linear(64, num_classes[0])  # Classification
+        self.depression_head = nn.Linear(64, num_classes[1])  # Classification
+        self.alzheimer_head = nn.Linear(64, num_classes[2])  # Classification
+
+    def forward(self, x):
+        shared_output = self.shared(x)
+        efficiency = self.efficiency_head(shared_output)  # Regression output
+        disorder = self.disorder_head(shared_output)  # Classification output
+        depression = self.depression_head(shared_output)
+        alzheimer = self.alzheimer_head(shared_output)
+
+        return efficiency, disorder, depression, alzheimer
+
+# Model Setup
+input_dim = X.shape[1]  # Number of features
+num_classes = [len(df[target].unique()) for target in classification_targets]  # Unique classes per target
+model = MultiTaskSleepModel(input_dim, num_classes)
+
+# Define loss functions
+regression_loss_fn = nn.MSELoss()
+classification_loss_fn = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+# Training Loop
+epochs = 50
+for epoch in range(epochs):
+    model.train()
+    total_loss = 0
+
+    for X_batch, y_reg_batch, y_class_batch in train_loader:
+        optimizer.zero_grad()
+
+        # Forward pass
+        y_eff_pred, y_dis_pred, y_dep_pred, y_alz_pred = model(X_batch)
+
+        # Compute losses
+        loss_reg = regression_loss_fn(y_eff_pred, y_reg_batch)  # Sleep Efficiency
+        loss_dis = classification_loss_fn(y_dis_pred, y_class_batch[:, 0])  # Sleep Disorder
+        loss_dep = classification_loss_fn(y_dep_pred, y_class_batch[:, 1])  # Depression
+        loss_alz = classification_loss_fn(y_alz_pred, y_class_batch[:, 2])  # Alzheimer's
+
+        # Total loss
+        total_loss = loss_reg + loss_dis + loss_dep + loss_alz
+        total_loss.backward()
+        optimizer.step()
+
+# Evaluation Loop
+model.eval()
+
+# Initialize lists to store predictions and actual values
+y_reg_preds = []
+y_dis_preds = []
+y_dep_preds = []
+y_alz_preds = []
+
+y_reg_true = []
+y_dis_true = []
+y_dep_true = []
+y_alz_true = []
+
+# Loop through the test data
+with torch.no_grad():
+    for X_batch, y_reg_batch, y_class_batch in test_loader:
+        # Make predictions
+        y_eff_pred, y_dis_pred, y_dep_pred, y_alz_pred = model(X_batch)
+
+        # Append predictions and actual values
+        y_reg_preds.extend(y_eff_pred.flatten().cpu().numpy())
+        y_dis_preds.extend(torch.argmax(y_dis_pred, axis=1).cpu().numpy())
+        y_dep_preds.extend(torch.argmax(y_dep_pred, axis=1).cpu().numpy())
+        y_alz_preds.extend(torch.argmax(y_alz_pred, axis=1).cpu().numpy())
+
+        y_reg_true.extend(y_reg_batch.cpu().numpy())
+        y_dis_true.extend(y_class_batch[:, 0].cpu().numpy())
+        y_dep_true.extend(y_class_batch[:, 1].cpu().numpy())
+        y_alz_true.extend(y_class_batch[:, 2].cpu().numpy())
+
+# Convert lists to numpy arrays for evaluation
+y_reg_preds = np.array(y_reg_preds)
+y_dis_preds = np.array(y_dis_preds)
+y_dep_preds = np.array(y_dep_preds)
+y_alz_preds = np.array(y_alz_preds)
+
+y_reg_true = np.array(y_reg_true)
+y_dis_true = np.array(y_dis_true)
+y_dep_true = np.array(y_dep_true)
+y_alz_true = np.array(y_alz_true)
+
+# Sleep Efficiency - Mean Absolute Error
+mae = mean_absolute_error(y_reg_true, y_reg_preds)
+print(f"Mean Absolute Error (Sleep Efficiency): {mae:.4f}")
+
+# Sleep Disorder - Classification Accuracy
+disorder_accuracy = accuracy_score(y_dis_true, y_dis_preds) * 100  # Convert to percentage
+
+# Depression - Classification Accuracy
+depression_accuracy = accuracy_score(y_dep_true, y_dep_preds) * 100  # Convert to percentage
+
+# Alzheimer's - Classification Accuracy
+alzheimers_accuracy = accuracy_score(y_alz_true, y_alz_preds) * 100  # Convert to percentage
+
+# Print the accuracies in percentage format
+print(f"Sleep Disorder Accuracy: {disorder_accuracy:.2f}%")
+print(f"Depression Accuracy: {depression_accuracy:.2f}%")
+print(f"Alzheimer's Accuracy: {alzheimers_accuracy:.2f}%")
+
+
+
