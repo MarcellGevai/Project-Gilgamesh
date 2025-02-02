@@ -7,7 +7,7 @@ Advancing personalized medicine through the early diagnosis of neurodegenerative
 ## Table of Contents
 - [Introduction](#introduction)
 - [Features](#features)
-- [Accessing the code](#Accessingthecode)
+- [Accessing the code](#Accessing-the-code)
 - [Usage](#usage)
 - [Technologies](#technologies)
 - [Contributing](#contributing)
